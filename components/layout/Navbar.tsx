@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { Bell, Calendar } from 'lucide-react';
+import logo from '../../public/img/logo.png';
+import Calendar from '@/components/logo/Calendar';
+import Bell from '../logo/Bell';
 
 export default function Navbar() {
   const today = new Date().toLocaleDateString('en-US', {
@@ -16,17 +18,17 @@ export default function Navbar() {
       
       {/* Logo */}
       <div>
-        <Image src="/logo.png" alt="Logo" width={120} height={40} />
+        <Image src={logo} alt="Logo" width={105} height={32} />
       </div>
 
       {/* Right Section */}
       <div className="flex items-center gap-6">
         <button className="bg-[#4F76FF] text-white p-2 rounded-lg">
-          <Bell size={20} />
+          <Bell />
         </button>
 
         <button className="bg-[#4F76FF] text-white p-2 rounded-lg">
-          <Calendar size={20} />
+          <Calendar/>
         </button>
 
         <div className="text-right">

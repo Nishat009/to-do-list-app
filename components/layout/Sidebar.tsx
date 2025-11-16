@@ -3,47 +3,49 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut, Home, CheckSquare, User } from 'lucide-react';
 import { clearAuth, getUser } from '@/lib/auth';
+import Task from '../logo/Task';
+import Profile from '../logo/Profile';
+import Logout from '../logo/Logout';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const user = getUser();
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-[#0D1B4C] text-white flex flex-col justify-between py-8">
+    <aside className="fixed left-0 top-0 h-full w-64 bg-[#0D224A] text-white flex flex-col justify-between py-8">
       
       {/* Top User Section */}
-      <div className="flex flex-col items-center px-4">
+      <div className="flex flex-col items-center mt-8">
         <Image
           src={user?.photo || '/avatar.png'}
           alt="User Photo"
-          width={90}
-          height={90}
+          width={86}
+          height={86}
           className="rounded-full border-2 border-white"
         />
-        <h3 className="mt-3 text-lg font-semibold">{user?.name}</h3>
-        <p className="text-sm text-gray-300">{user?.email}</p>
+        <h3 className="mt-3 font-semibold">{user?.name}</h3>
+        <p className="text-xs">{user?.email}</p>
 
         {/* Navigation */}
-        <nav className="mt-10 w-full">
+        <nav className="mt-[46px] w-full ">
           <Link
             href="/dashboard"
-            className={`flex items-center gap-3 px-6 py-3 hover:bg-[#13235f] transition rounded-r-full ${
-              pathname === '/dashboard' ? 'bg-[#13235f]' : ''
+            className={`flex items-center text-[#8CA3CD] gap-3 px-6 py-3 hover:bg-linear-65 from-[#5272ff54] to-[#0D224A] transition ${
+              pathname === '/dashboard' ? 'text-white bg-linear-65 from-[#5272ff54] to-[#0D224A]' : ''
             }`}
           >
-            <CheckSquare size={20} />
+            <Task />
             Todos
           </Link>
 
           <Link
             href="/profile"
-            className={`flex items-center gap-3 px-6 py-3 hover:bg-[#13235f] transition rounded-r-full ${
-              pathname === '/profile' ? 'bg-[#13235f]' : ''
+            className={`flex items-center text-[#8CA3CD] gap-3 px-6 py-3 hover:bg-linear-65 from-[#5272ff54] to-[#0D224A] transition ${
+              pathname === '/profile' ? 'text-white bg-linear-65 from-[#5272ff54] to-[#0D224A]' : ''
             }`}
           >
-            <User size={20} />
+           <Profile />
             Account Information
           </Link>
         </nav>
@@ -53,9 +55,9 @@ export default function Sidebar() {
       <div className="px-6">
         <button
           onClick={clearAuth}
-          className="flex items-center gap-3 text-gray-300 hover:text-white"
+          className="flex items-center text-[#8CA3CD] gap-3 px-6 py-3 hover:bg-linear-65 from-[#5272ff54] to-[#0D224A] transition"
         >
-          <LogOut size={20} />
+          <Logout />
           Logout
         </button>
       </div>
