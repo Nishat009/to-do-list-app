@@ -32,8 +32,8 @@ export default function Navbar() {
         </button>
 
         <div className="text-right">
-          <p className="font-medium">{today.split(',')[0]}</p>
-          <p className="text-sm text-gray-500">{today.split(',')[1]}</p>
+          <p className="font-medium text-[15px] text-[#0D224A">{today.split(',')[0]}</p>
+          <p className="text-sm font-medium text-[#0D224A]">{today.split(',')[1]}</p>
         </div>
       </div>
 
