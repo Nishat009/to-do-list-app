@@ -9,6 +9,7 @@ import AuthIllustration from "@/components/layout/AuthIllustration";
 import AuthInput from "@/components/layout/AuthInput";
 import AuthButton from "@/components/layout/AuthButton";
 import Link from "next/link";
+import PosterWomen from "@/components/logo/PosterWomen";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function SignupPage() {
 
       {/* LEFT ILLUSTRATION */}
       <div className="flex-1 bg-indigo-50 flex items-center justify-center p-12">
-        <AuthIllustration src={Illustration} />
+        <PosterWomen/>
       </div>
 
       {/* RIGHT FORM */}
@@ -96,17 +97,21 @@ export default function SignupPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <AuthInput
                 label="First Name"
-  value={form.first_name}
-  onChange={(v) => {
-    setForm({ ...form, first_name: v });
-    if (v.trim() !== "") setErrors((prev) => ({ ...prev, first_name: "" }));
-  }}
-  error={errors.first_name}
+                value={form.first_name}
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
+                onChange={(v) => {
+                  setForm({ ...form, first_name: v });
+                  if (v.trim() !== "") setErrors((prev) => ({ ...prev, first_name: "" }));
+                }}
+                error={errors.first_name}
               />
 
               <AuthInput
                 label="Last Name"
                 value={form.last_name}
+                inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+                labelClass="text-sm font-medium text-[#000000]"
                 onChange={(v) => {
                   setForm({ ...form, last_name: v });
                   if (v.trim() !== "") setErrors((prev) => ({ ...prev, last_name: "" }));
@@ -119,6 +124,8 @@ export default function SignupPage() {
               label="Email"
               type="email"
               value={form.email}
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, email: v });
                 if (errors.email) setErrors({ ...errors, email: "" });
@@ -128,24 +135,28 @@ export default function SignupPage() {
 
             <AuthInput
               label="Password"
-  type="password"
-  value={form.password}
-  onChange={(v) => {
-    setForm({ ...form, password: v });
+              type="password"
+              value={form.password}
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
+              onChange={(v) => {
+                setForm({ ...form, password: v });
 
-    // Clear the error when user starts typing
-    if (v.length >= 6) {
-      setErrors((prev) => ({ ...prev, password: "" }));
-    }
-  }}
-  error={errors.password}
-  showToggle={true}
+                // Clear the error when user starts typing
+                if (v.length >= 6) {
+                  setErrors((prev) => ({ ...prev, password: "" }));
+                }
+              }}
+              error={errors.password}
+              showToggle={true}
             />
 
             <AuthInput
               label="Confirm Password"
               type="password"
               value={form.confirm_password}
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, confirm_password: v });
                 if (errors.confirm_password)

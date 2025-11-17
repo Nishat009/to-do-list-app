@@ -8,6 +8,7 @@ import { saveTokens } from "@/lib/auth";
 import { AxiosError } from "axios";
 import AuthInput from "@/components/layout/AuthInput";
 import AuthButton from "@/components/layout/AuthButton";
+import WomenSit from "@/components/logo/WomenSit";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -71,7 +72,7 @@ export default function LoginPage() {
 
       {/* LEFT — Optional Illustration */}
       <div className="flex-1 bg-indigo-50 flex items-center justify-center p-12">
-        {/* Illustration if needed */}
+        <WomenSit/>
       </div>
 
       {/* RIGHT FORM */}
@@ -86,6 +87,8 @@ export default function LoginPage() {
             <AuthInput
               label="Email"
               type="email"
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
               value={form.email}
               onChange={(v) => {
                 setForm({ ...form, email: v });
@@ -98,6 +101,8 @@ export default function LoginPage() {
               label="Password"
               type="password"
               value={form.password}
+              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, password: v });
                 setErrors((prev) => ({ ...prev, password: "" }));

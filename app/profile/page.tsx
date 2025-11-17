@@ -88,9 +88,13 @@ export default function ProfilePage() {
 
 
           <div className="bg-white mt-6 p-8 shadow rounded-2xl">
-            <h2 className="text-2xl font-semibold border-b-2 text-[#0D224A] border-[#5272FF] pb-0 mb-6 w-max">
-              Account Information
-            </h2>
+            
+            <h2 className="text-2xl font-semibold text-[#0D224A] pb-0 mb-6 relative w-max">
+  Account Information
+  <span className="block bg-[#5272FF] h-[2px] w-[70%] mt-1"></span>
+</h2>
+
+
             {/* -------- PROFILE PHOTO SECTION -------- */}
 
 
