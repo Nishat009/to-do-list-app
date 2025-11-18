@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+
 
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
@@ -17,6 +19,7 @@ import { useTodos } from "@/hooks/useTodos";
 import { Todo } from "@/types";
 import TaskMenu from "@/components/logo/TaskMenu";
 
+
 export default function DashboardPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +30,13 @@ export default function DashboardPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<"extreme" | "moderate" | "low">("moderate");
   const [currentTodo, setCurrentTodo] = useState<Todo | null>(null);
+
+  const [filterOptions, setFilterOptions] = useState({
+    today: false,
+    next5Days: false,
+    next10Days: false,
+    next30Days: false,
+  });
 
   const { todos, loading, createTodo, updateTodo, deleteTodo } = useTodos();
 
@@ -46,7 +56,6 @@ export default function DashboardPage() {
         priority,
         todo_date: date || new Date().toISOString().split("T")[0],
       });
-
       resetForm();
       toast.success("Task created successfully!");
     } catch (error) {
@@ -86,19 +95,17 @@ export default function DashboardPage() {
   // DELETE TASK FUNCTION
   // ------------------------
   const onDelete = async (id: number) => {
-  // Show a toast asking for confirmation
-  toast.promise(
-    (async () => {
-      await deleteTodo(id);
-    })(),
-    {
-      loading: "Deleting task...",
-      success: "Task deleted successfully!",
-      error: "Failed to delete task. Please try again.",
-    }
-  );
-};
-
+    toast.promise(
+      (async () => {
+        await deleteTodo(id);
+      })(),
+      {
+        loading: "Deleting task...",
+        success: "Task deleted successfully!",
+        error: "Failed to delete task. Please try again.",
+      }
+    );
+  };
 
   // ------------------------
   // EDIT TASK FUNCTION
@@ -125,16 +132,35 @@ export default function DashboardPage() {
   };
 
   // ------------------------
-  // Filter todos based on search
+  // FILTER HANDLER
   // ------------------------
-  const filteredTodos = todos.filter(
-    (todo) =>
-      todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      todo.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleFilterChange = (option: string) => {
+    setFilterOptions((prev) => ({ ...prev, [option]: !prev[option] }));
+  };
 
   // ------------------------
-  // Format priority for display
+  // Filter todos based on search and date
+  // ------------------------
+  const filteredTodos = todos.filter((todo) => {
+    const matchesSearch =
+      todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      todo.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    const today = new Date();
+    const todoDate = new Date(todo.todo_date || "");
+
+    if (filterOptions.today && todoDate.toDateString() !== today.toDateString()) return false;
+    if (filterOptions.next5Days && todoDate > new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000)) return false;
+    if (filterOptions.next10Days && todoDate > new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000)) return false;
+    if (filterOptions.next30Days && todoDate > new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)) return false;
+
+    return true;
+  });
+
+  // ------------------------
+  // Format priority
   // ------------------------
   const formatPriority = (priority: string) => {
     if (priority === "extreme") return "Extreme";
@@ -144,11 +170,22 @@ export default function DashboardPage() {
   };
 
   // ------------------------
+  // DRAG & DROP HANDLER
+  // ------------------------
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const items = Array.from(filteredTodos);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    console.log("New Order:", items.map((t) => t.id));
+    // Optional: update backend order here
+  };
+
+  // ------------------------
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-[#EEF7FF] flex">
         <Sidebar />
-
         <div className="flex-1 ml-64 flex flex-col">
           <Navbar />
 
@@ -157,9 +194,7 @@ export default function DashboardPage() {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-4xl font-bold text-[#0D224A] pb-0 mb-6 w-max">
-                  <span className="border-b-2 border-[#5272FF] inline-block w-[60%]">
-                    Todos
-                  </span>
+                  <span className="border-b-2 border-[#5272FF] inline-block w-[60%]">Todos</span>
                 </h2>
 
                 <button
@@ -198,21 +233,39 @@ export default function DashboardPage() {
 
                   {showFilter && (
                     <div className="absolute right-0 w-[164px] bg-[#FCFCFC] shadow-[#00000029] rounded-xs shadow-lg p-3 z-10">
-                      <p className="text-xs text-[#4B5563] border-b pb-2 border-[#00000040]">
-                        Date
-                      </p>
+                      <p className="text-xs text-[#4B5563] border-b pb-2 border-[#00000040]">Date</p>
                       <div className="space-y-2 mt-2">
                         <label className="flex items-center gap-2 text-xs">
-                          <input type="checkbox" /> Deadline Today
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.today}
+                            onChange={() => handleFilterChange("today")}
+                          />{" "}
+                          Deadline Today
                         </label>
                         <label className="flex items-center gap-2 text-xs">
-                          <input type="checkbox" /> Expires in 5 days
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.next5Days}
+                            onChange={() => handleFilterChange("next5Days")}
+                          />{" "}
+                          Expires in 5 days
                         </label>
                         <label className="flex items-center gap-2 text-xs">
-                          <input type="checkbox" /> Expires in 10 days
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.next10Days}
+                            onChange={() => handleFilterChange("next10Days")}
+                          />{" "}
+                          Expires in 10 days
                         </label>
                         <label className="flex items-center gap-2 text-xs">
-                          <input type="checkbox" /> Expires in 30 days
+                          <input
+                            type="checkbox"
+                            checked={filterOptions.next30Days}
+                            onChange={() => handleFilterChange("next30Days")}
+                          />{" "}
+                          Expires in 30 days
                         </label>
                       </div>
                     </div>
@@ -220,14 +273,14 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* If LOADING */}
+              {/* LOADING */}
               {loading && (
                 <div className="bg-white rounded-2xl border border-[#D1D5DB] p-16 text-center">
                   <p className="text-2xl font-regular text-[#201F1E]">Loading todos...</p>
                 </div>
               )}
 
-              {/* If NO TASKS */}
+              {/* NO TASKS */}
               {!loading && filteredTodos.length === 0 && (
                 <div className="bg-white rounded-2xl border border-[#D1D5DB] p-16 text-center">
                   <button
@@ -245,97 +298,111 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Your Tasks Section */}
+              {/* TASKS GRID WITH DRAG & DROP */}
               {!loading && filteredTodos.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-2xl font-bold text-[#0D224A] mb-6">Your Tasks</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredTodos.map((todo) => (
-                      <div key={todo.id}>
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="todos" direction="horizontal">
+                      {(provided) => (
                         <div
-                          className={`flex flex-col bg-white justify-between h-full min-h-[220px] rounded-lg p-6 border ${
-                            todo.priority === "extreme"
-                              ? "border-[#DC2626]"
-                              : todo.priority === "moderate"
-                              ? "border-[#16A34A]"
-                              : todo.priority === "low"
-                              ? "border-[#CA8A04]"
-                              : "border-[#D1D5DB]"
-                          }`}
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
                         >
-                          <div>
-                            {/* HEADER WITH PRIORITY BADGE */}
-                            <div className="flex justify-between items-center gap-2">
-                              <h3
-                                className={`font-medium text-[#0D224A] mb-2 ${
-                                  todo.is_completed ? "line-through text-gray-400" : ""
-                                }`}
-                              >
-                                {todo.title}
-                              </h3>
-
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`text-xs px-3 py-1 rounded font-regular ${
-                                    todo.priority === "extreme"
-                                      ? "bg-[#FEE2E2] text-[#DC2626]"
-                                      : todo.priority === "moderate"
-                                      ? "bg-[#DCFCE7] text-[#16A34A]"
-                                      : todo.priority === "low"
-                                      ? "bg-[#FEF9C3] text-[#CA8A04]"
-                                      : "bg-gray-100 text-gray-500"
-                                  }`}
+                          {filteredTodos.map((todo, index) => (
+                            <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
+                              {(provided) => (
+                                <div
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  ref={provided.innerRef}
                                 >
-                                  {formatPriority(todo.priority)}
-                                </span>
+                                  <div
+                                    className={`flex flex-col bg-white justify-between h-full min-h-[220px] rounded-lg p-6 border ${
+                                      todo.priority === "extreme"
+                                        ? "border-[#DC2626]"
+                                        : todo.priority === "moderate"
+                                        ? "border-[#16A34A]"
+                                        : todo.priority === "low"
+                                        ? "border-[#CA8A04]"
+                                        : "border-[#D1D5DB]"
+                                    }`}
+                                  >
+                                    <div className="flex justify-between items-center gap-2">
+                                      <h3
+                                        className={`font-medium text-[#0D224A] mb-2 ${
+                                          todo.is_completed ? "line-through text-gray-400" : ""
+                                        }`}
+                                      >
+                                        {todo.title}
+                                      </h3>
 
-                                <TaskMenu />
-                              </div>
-                            </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span
+                                          className={`text-xs px-3 py-1 rounded font-regular ${
+                                            todo.priority === "extreme"
+                                              ? "bg-[#FEE2E2] text-[#DC2626]"
+                                              : todo.priority === "moderate"
+                                              ? "bg-[#DCFCE7] text-[#16A34A]"
+                                              : todo.priority === "low"
+                                              ? "bg-[#FEF9C3] text-[#CA8A04]"
+                                              : "bg-gray-100 text-gray-500"
+                                          }`}
+                                        >
+                                          {formatPriority(todo.priority)}
+                                        </span>
 
-                            {/* DESCRIPTION */}
-                            {todo.description && (
-                              <p className="text-sm text-[#4B5563] my-4 line-clamp-2">
-                                {todo.description}
-                              </p>
-                            )}
-                          </div>
+                                        <TaskMenu />
+                                      </div>
+                                    </div>
 
-                          {/* FOOTER */}
-                          <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-[#E5E7EB]">
-                            {todo.todo_date && (
-                              <p className="text-sm font-regular text-[#4B5563]">
-                                Due{" "}
-                                {new Date(todo.todo_date).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                              </p>
-                            )}
+                                    {todo.description && (
+                                      <p className="text-sm text-[#4B5563] my-4 line-clamp-2">
+                                        {todo.description}
+                                      </p>
+                                    )}
 
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => onEdit(todo)}
-                                className="text-[#00000000] rounded-xs p-2.5 bg-[#EEF7FF] h-8 w-8"
-                                title="Edit"
-                              >
-                                <Edit />
-                              </button>
+                                    <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-[#E5E7EB]">
+                                      {todo.todo_date && (
+                                        <p className="text-sm font-regular text-[#4B5563]">
+                                          Due{" "}
+                                          {new Date(todo.todo_date).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          })}
+                                        </p>
+                                      )}
 
-                              <button
-                                onClick={() => onDelete(todo.id)}
-                                className="text-[#DC2626] p-2.5 rounded-xs bg-[#EEF7FF] h-8 w-8"
-                                title="Delete"
-                              >
-                                <Delete />
-                              </button>
-                            </div>
-                          </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => onEdit(todo)}
+                                          className="text-[#00000000] rounded-xs p-2.5 bg-[#EEF7FF] h-8 w-8"
+                                          title="Edit"
+                                        >
+                                          <Edit />
+                                        </button>
+
+                                        <button
+                                          onClick={() => onDelete(todo.id)}
+                                          className="text-[#DC2626] p-2.5 rounded-xs bg-[#EEF7FF] h-8 w-8"
+                                          title="Delete"
+                                        >
+                                          <Delete />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
                 </div>
               )}
             </div>
@@ -348,22 +415,17 @@ export default function DashboardPage() {
             className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
             onClick={resetForm}
           >
-            <div
-              className="bg-white w-[640px] rounded-xl p-8 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="bg-white w-[640px] rounded-xl p-8 shadow-lg" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="font-semibold">
                   {currentTodo ? "Edit Task" : "Add New Task"}
                   <span className="block bg-[#5272FF] h-[2px] w-[60%] mt-0.5"></span>
                 </h2>
-
                 <button className="text-sm font-semibold text-[#000000] underline" onClick={resetForm}>
                   Go Back
                 </button>
               </div>
 
-              {/* Title */}
               <div className="mb-4">
                 <AuthInput
                   label="Title"
@@ -374,7 +436,6 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Date */}
               <div className="mb-4">
                 <AuthInput
                   label="Date"
@@ -386,46 +447,24 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* Priority */}
               <div className="mb-4">
                 <label className="text-sm font-semibold text-[#0C0C0C]">Priority</label>
                 <div className="flex gap-4 mt-1">
                   <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#EE0039]">●</span>
-                    <span className="text-[#4B5563]">Extreme</span>
-                    <input
-                      type="radio"
-                      name="priority"
-                      checked={priority === "extreme"}
-                      onChange={() => setPriority("extreme")}
-                    />
+                    <span className="text-[#EE0039]">●</span>Extreme
+                    <input type="radio" name="priority" checked={priority === "extreme"} onChange={() => setPriority("extreme")} />
                   </label>
-
                   <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#11C25D]">●</span>
-                    <span className="text-[#4B5563]">Moderate</span>
-                    <input
-                      type="radio"
-                      name="priority"
-                      checked={priority === "moderate"}
-                      onChange={() => setPriority("moderate")}
-                    />
+                    <span className="text-[#11C25D]">●</span>Moderate
+                    <input type="radio" name="priority" checked={priority === "moderate"} onChange={() => setPriority("moderate")} />
                   </label>
-
                   <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#EAB308]">●</span>
-                    <span className="text-[#4B5563]">Low</span>
-                    <input
-                      type="radio"
-                      name="priority"
-                      checked={priority === "low"}
-                      onChange={() => setPriority("low")}
-                    />
+                    <span className="text-[#EAB308]">●</span>Low
+                    <input type="radio" name="priority" checked={priority === "low"} onChange={() => setPriority("low")} />
                   </label>
                 </div>
               </div>
 
-              {/* Description */}
               <div className="mb-9">
                 <label className="text-sm font-semibold text-[#0C0C0C]">Task Description</label>
                 <textarea
@@ -437,7 +476,6 @@ export default function DashboardPage() {
                 ></textarea>
               </div>
 
-              {/* Buttons */}
               <div className="flex justify-between items-center">
                 <button
                   onClick={currentTodo ? updateTask : addTask}
