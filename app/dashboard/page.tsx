@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-
 
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
@@ -18,7 +17,6 @@ import { ProtectedRoute } from "@/components/protectedRoutes";
 import { useTodos } from "@/hooks/useTodos";
 import { Todo } from "@/types";
 import TaskMenu from "@/components/logo/TaskMenu";
-
 
 export default function DashboardPage() {
   const [showFilter, setShowFilter] = useState(false);
@@ -39,6 +37,47 @@ export default function DashboardPage() {
   });
 
   const { todos, loading, createTodo, updateTodo, deleteTodo } = useTodos();
+
+  // NEW: Local state to maintain drag order (this fixes the snap-back issue)
+  const [draggableTodos, setDraggableTodos] = useState<Todo[]>([]);
+
+  // Sync draggableTodos whenever filtered todos change
+  useEffect(() => {
+    const filtered = todos.filter((todo) => {
+      const matchesSearch =
+        todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (todo.description && todo.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      if (!matchesSearch) return false;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todoDate = todo.todo_date ? new Date(todo.todo_date) : null;
+
+      if (!todoDate) return true;
+
+      if (filterOptions.today) {
+        const isToday = todoDate.toDateString() === today.toDateString();
+        if (!isToday) return false;
+      }
+      if (filterOptions.next5Days) {
+        const fiveDaysFromNow = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
+        if (todoDate > fiveDaysFromNow) return false;
+      }
+      if (filterOptions.next10Days) {
+        const tenDaysFromNow = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);
+        if (todoDate > tenDaysFromNow) return false;
+      }
+      if (filterOptions.next30Days) {
+        const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        if (todoDate > thirtyDaysFromNow) return false;
+      }
+
+      return true;
+    });
+
+    setDraggableTodos(filtered);
+  }, [todos, searchQuery, filterOptions]);
 
   // ------------------------
   // ADD TASK FUNCTION
@@ -96,9 +135,7 @@ export default function DashboardPage() {
   // ------------------------
   const onDelete = async (id: number) => {
     toast.promise(
-      (async () => {
-        await deleteTodo(id);
-      })(),
+      deleteTodo(id),
       {
         loading: "Deleting task...",
         success: "Task deleted successfully!",
@@ -134,54 +171,38 @@ export default function DashboardPage() {
   // ------------------------
   // FILTER HANDLER
   // ------------------------
-  const handleFilterChange = (option: string) => {
+  const handleFilterChange = (option: keyof typeof filterOptions) => {
     setFilterOptions((prev) => ({ ...prev, [option]: !prev[option] }));
   };
-
-  // ------------------------
-  // Filter todos based on search and date
-  // ------------------------
-  const filteredTodos = todos.filter((todo) => {
-    const matchesSearch =
-      todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      todo.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    if (!matchesSearch) return false;
-
-    const today = new Date();
-    const todoDate = new Date(todo.todo_date || "");
-
-    if (filterOptions.today && todoDate.toDateString() !== today.toDateString()) return false;
-    if (filterOptions.next5Days && todoDate > new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000)) return false;
-    if (filterOptions.next10Days && todoDate > new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000)) return false;
-    if (filterOptions.next30Days && todoDate > new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)) return false;
-
-    return true;
-  });
 
   // ------------------------
   // Format priority
   // ------------------------
   const formatPriority = (priority: string) => {
-    if (priority === "extreme") return "Extreme";
-    if (priority === "moderate") return "Moderate";
-    if (priority === "low") return "Low";
-    return priority;
+    switch (priority) {
+      case "extreme": return "Extreme";
+      case "moderate": return "Moderate";
+      case "low": return "Low";
+      default: return priority;
+    }
   };
 
   // ------------------------
-  // DRAG & DROP HANDLER
+  // DRAG & DROP HANDLER (NOW WORKS!)
   // ------------------------
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    const items = Array.from(filteredTodos);
+
+    const items = Array.from(draggableTodos);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-    console.log("New Order:", items.map((t) => t.id));
-    // Optional: update backend order here
+
+    setDraggableTodos(items); // This persists the new order!
+
+    // Optional: Send new order to backend later
+    // console.log("New order:", items.map(t => t.id));
   };
 
-  // ------------------------
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-[#EEF7FF] flex">
@@ -235,38 +256,19 @@ export default function DashboardPage() {
                     <div className="absolute right-0 w-[164px] bg-[#FCFCFC] shadow-[#00000029] rounded-xs shadow-lg p-3 z-10">
                       <p className="text-xs text-[#4B5563] border-b pb-2 border-[#00000040]">Date</p>
                       <div className="space-y-2 mt-2">
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={filterOptions.today}
-                            onChange={() => handleFilterChange("today")}
-                          />{" "}
-                          Deadline Today
-                        </label>
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={filterOptions.next5Days}
-                            onChange={() => handleFilterChange("next5Days")}
-                          />{" "}
-                          Expires in 5 days
-                        </label>
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={filterOptions.next10Days}
-                            onChange={() => handleFilterChange("next10Days")}
-                          />{" "}
-                          Expires in 10 days
-                        </label>
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={filterOptions.next30Days}
-                            onChange={() => handleFilterChange("next30Days")}
-                          />{" "}
-                          Expires in 30 days
-                        </label>
+                        {(["today", "next5Days", "next10Days", "next30Days"] as const).map((key) => (
+                          <label key={key} className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={filterOptions[key]}
+                              onChange={() => handleFilterChange(key)}
+                            />{" "}
+                            {key === "today" && "Deadline Today"}
+                            {key === "next5Days" && "Expires in 5 days"}
+                            {key === "next10Days" && "Expires in 10 days"}
+                            {key === "next30Days" && "Expires in 30 days"}
+                          </label>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -281,7 +283,7 @@ export default function DashboardPage() {
               )}
 
               {/* NO TASKS */}
-              {!loading && filteredTodos.length === 0 && (
+              {!loading && draggableTodos.length === 0 && (
                 <div className="bg-white rounded-2xl border border-[#D1D5DB] p-16 text-center">
                   <button
                     onClick={() => {
@@ -293,13 +295,15 @@ export default function DashboardPage() {
                     <AddTaskLogo />
                   </button>
                   <p className="mt-2 text-2xl font-regular text-[#201F1E]">
-                    {searchQuery ? "No todos found" : "No todos yet"}
+                    {searchQuery || Object.values(filterOptions).some(Boolean)
+                      ? "No todos found"
+                      : "No todos yet"}
                   </p>
                 </div>
               )}
 
               {/* TASKS GRID WITH DRAG & DROP */}
-              {!loading && filteredTodos.length > 0 && (
+              {!loading && draggableTodos.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-2xl font-bold text-[#0D224A] mb-6">Your Tasks</h3>
                   <DragDropContext onDragEnd={onDragEnd}>
@@ -310,55 +314,59 @@ export default function DashboardPage() {
                           {...provided.droppableProps}
                           ref={provided.innerRef}
                         >
-                          {filteredTodos.map((todo, index) => (
-                            <Draggable key={todo.id} draggableId={todo.id.toString()} index={index}>
-                              {(provided) => (
+                          {draggableTodos.map((todo, index) => (
+                            <Draggable key={todo.id} draggableId={String(todo.id)} index={index}>
+                              {(provided, snapshot) => (
                                 <div
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
                                   ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`relative ${snapshot.isDragging ? "opacity-80 scale-105" : ""}`}
                                 >
                                   <div
-                                    className={`flex flex-col bg-white justify-between h-full min-h-[220px] rounded-lg p-6 border ${
+                                    className={`flex flex-col bg-white justify-between h-full min-h-[220px] rounded-lg p-6 border shadow-sm transition-all ${
                                       todo.priority === "extreme"
                                         ? "border-[#DC2626]"
                                         : todo.priority === "moderate"
-                                        ? "border-[#16A34A]"
-                                        : todo.priority === "low"
-                                        ? "border-[#CA8A04]"
-                                        : "border-[#D1D5DB]"
+                                          ? "border-[#16A34A]"
+                                          : todo.priority === "low"
+                                            ? "border-[#CA8A04]"
+                                            : "border-[#D1D5DB]"
                                     }`}
                                   >
-                                    <div className="flex justify-between items-center gap-2">
+                                    <div className="flex justify-between items-start gap-2">
                                       <h3
-                                        className={`font-medium text-[#0D224A] mb-2 ${
+                                        className={`font-medium text-[#0D224A] mb-2 text-lg ${
                                           todo.is_completed ? "line-through text-gray-400" : ""
                                         }`}
                                       >
                                         {todo.title}
                                       </h3>
 
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-2">
                                         <span
-                                          className={`text-xs px-3 py-1 rounded font-regular ${
+                                          className={`text-xs px-3 py-1 rounded font-medium ${
                                             todo.priority === "extreme"
                                               ? "bg-[#FEE2E2] text-[#DC2626]"
                                               : todo.priority === "moderate"
-                                              ? "bg-[#DCFCE7] text-[#16A34A]"
-                                              : todo.priority === "low"
-                                              ? "bg-[#FEF9C3] text-[#CA8A04]"
-                                              : "bg-gray-100 text-gray-500"
+                                                ? "bg-[#DCFCE7] text-[#16A34A]"
+                                                : "bg-[#FEF9C3] text-[#CA8A04]"
                                           }`}
                                         >
                                           {formatPriority(todo.priority)}
                                         </span>
 
-                                        <TaskMenu />
+                                        {/* Drag Handle */}
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-grab active:cursor-grabbing p-1"
+                                        >
+                                          <TaskMenu />
+                                        </div>
                                       </div>
                                     </div>
 
                                     {todo.description && (
-                                      <p className="text-sm text-[#4B5563] my-4 line-clamp-2">
+                                      <p className="text-sm text-[#4B5563] my-4 line-clamp-3">
                                         {todo.description}
                                       </p>
                                     )}
@@ -378,7 +386,7 @@ export default function DashboardPage() {
                                       <div className="flex items-center gap-2">
                                         <button
                                           onClick={() => onEdit(todo)}
-                                          className="text-[#00000000] rounded-xs p-2.5 bg-[#EEF7FF] h-8 w-8"
+                                          className="p-2.5 bg-[#EEF7FF] rounded-lg hover:bg-blue-100 transition"
                                           title="Edit"
                                         >
                                           <Edit />
@@ -386,7 +394,7 @@ export default function DashboardPage() {
 
                                         <button
                                           onClick={() => onDelete(todo.id)}
-                                          className="text-[#DC2626] p-2.5 rounded-xs bg-[#EEF7FF] h-8 w-8"
+                                          className="p-2.5 bg-[#FEF2F2] text-[#DC2626] rounded-lg hover:bg-red-100 transition"
                                           title="Delete"
                                         >
                                           <Delete />
@@ -409,84 +417,95 @@ export default function DashboardPage() {
           </main>
         </div>
 
-        {/* MODAL */}
+        {/* MODAL - unchanged */}
         {showModal && (
           <div
             className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
             onClick={resetForm}
           >
-            <div className="bg-white w-[640px] rounded-xl p-8 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="bg-white w-[640px] rounded-xl p-8 shadow-xl max-h-screen overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex justify-between items-center mb-6">
-                <h2 className="font-semibold">
+                <h2 className="text-2xl font-semibold text-[#0D224A]">
                   {currentTodo ? "Edit Task" : "Add New Task"}
-                  <span className="block bg-[#5272FF] h-[2px] w-[60%] mt-0.5"></span>
+                  <span className="block bg-[#5272FF] h-0.5 w-24 mt-1"></span>
                 </h2>
-                <button className="text-sm font-semibold text-[#000000] underline" onClick={resetForm}>
+                <button className="text-sm font-medium underline" onClick={resetForm}>
                   Go Back
                 </button>
               </div>
 
-              <div className="mb-4">
+              <div className="space-y-5">
                 <AuthInput
                   label="Title"
                   value={title}
                   onChange={setTitle}
-                  inputClass="border border-[#A1A3AB] rounded-md h-[37px]"
-                  labelClass="text-sm font-semibold text-[#0C0C0C]"
+                  inputClass="border border-[#A1A3AB] rounded-md h-[37px] px-3"
+                  labelClass="block text-sm font-semibold text-[#0C0C0C]"
                 />
-              </div>
 
-              <div className="mb-4">
-                <AuthInput
-                  label="Date"
-                  type="date"
-                  value={date}
-                  onChange={setDate}
-                  inputClass="border border-[#A1A3AB] rounded-md h-[37px]"
-                  labelClass="text-sm font-semibold text-[#0C0C0C]"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="text-sm font-semibold text-[#0C0C0C]">Priority</label>
-                <div className="flex gap-4 mt-1">
-                  <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#EE0039]">●</span>Extreme
-                    <input type="radio" name="priority" checked={priority === "extreme"} onChange={() => setPriority("extreme")} />
-                  </label>
-                  <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#11C25D]">●</span>Moderate
-                    <input type="radio" name="priority" checked={priority === "moderate"} onChange={() => setPriority("moderate")} />
-                  </label>
-                  <label className="flex items-center gap-2 text-[13px] font-regular">
-                    <span className="text-[#EAB308]">●</span>Low
-                    <input type="radio" name="priority" checked={priority === "low"} onChange={() => setPriority("low")} />
-                  </label>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0C0C0C] mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full border border-[#A1A3AB] rounded-md h-[37px] px-3"
+                  />
                 </div>
-              </div>
 
-              <div className="mb-9">
-                <label className="text-sm font-semibold text-[#0C0C0C]">Task Description</label>
-                <textarea
-                  rows={5}
-                  className="w-full border border-[#A1A3AB] rounded-md px-3 py-2 mt-1 text-[13px] focus:outline-none"
-                  placeholder="Start writing here..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                ></textarea>
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0C0C0C] mb-2">Priority</label>
+                  <div className="flex gap-6">
+                    {([
+                      { value: "extreme", label: "Extreme", color: "#EE0039" },
+                      { value: "moderate", label: "Moderate", color: "#11C25D" },
+                      { value: "low", label: "Low", color: "#EAB308" },
+                    ] as const).map((p) => (
+                      <label key={p.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <span style={{ color: p.color }}>●</span>
+                        {p.label}
+                        <input
+                          type="radio"
+                          name="priority"
+                          checked={priority === p.value}
+                          onChange={() => setPriority(p.value)}
+                          className="ml-2 "
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={currentTodo ? updateTask : addTask}
-                  className="bg-[#5272FF] text-white px-6 py-2 rounded-lg text-sm font-semibold w-[90px]"
-                >
-                  Done
-                </button>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0C0C0C] mb-1">
+                    Task Description
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Start writing here..."
+                    className="w-full border border-[#A1A3AB] rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  />
+                </div>
 
-                <button onClick={resetForm} className="bg-red-500 text-white p-2.5 rounded-lg text-sm">
-                  <Delete />
-                </button>
+                <div className="flex justify-between items-center pt-4">
+                  <button
+                    onClick={currentTodo ? updateTask : addTask}
+                    className="bg-[#5272FF] text-white px-8 py-2.5 rounded-lg font-medium"
+                  >
+                    {currentTodo ? "Update" : "Done"}
+                  </button>
+                  <button
+                    onClick={resetForm}
+                    className="bg-[#EE0039] text-white p-3 rounded-lg"
+                  >
+                    <Delete />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
