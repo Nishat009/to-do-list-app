@@ -205,13 +205,8 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#EEF7FF] flex">
-        <Sidebar />
-        <div className="flex-1 ml-64 flex flex-col">
-          <Navbar />
-
-          <main className="flex-1 p-8">
-            <div className="max-w-5xl mx-auto">
+      <main className="flex-1 p-5">
+            <div className="mx-auto">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-4xl font-bold text-[#0D224A] pb-0 mb-6 w-max">
@@ -415,7 +410,6 @@ export default function DashboardPage() {
               )}
             </div>
           </main>
-        </div>
 
         {/* MODAL - unchanged */}
         {showModal && (
@@ -472,7 +466,7 @@ export default function DashboardPage() {
                           name="priority"
                           checked={priority === p.value}
                           onChange={() => setPriority(p.value)}
-                          className="ml-2 "
+                          className="ml-2 h-[15px] w-[15px]"
                         />
                       </label>
                     ))}
@@ -510,7 +504,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </div>
     </ProtectedRoute>
   );
 }

@@ -44,16 +44,16 @@ export default function SignupPage() {
     const newErrors: Record<string, string> = {};
 
     if (!form.first_name.trim())
-      newErrors.first_name = "First name is required.";
+      newErrors.first_name = "Please enter a valid name format.d.";
 
     if (!form.last_name.trim())
-      newErrors.last_name = "Last name is required.";
+      newErrors.last_name = "Please enter a valid name format.";
 
     if (!form.email.includes("@") || !form.email.includes("."))
       newErrors.email = "Please enter a valid email address.";
 
-    if (form.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters.";
+    if (form.password.length < 4)
+      newErrors.password = "4 characters minimum.";
 
     if (form.password !== form.confirm_password)
       newErrors.confirm_password = "Passwords do not match.";
@@ -135,7 +135,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* LEFT ILLUSTRATION */}
-      <div className="flex-1 bg-indigo-50 flex items-center justify-center p-12">
+      <div className="flex-1 bg-[#E2ECF8] flex items-center justify-center p-12">
         <PosterWomen />
       </div>
 
