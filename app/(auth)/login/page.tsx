@@ -1,31 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import api from "@/lib/api";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import Link from "next/link";
-import { saveTokens } from "@/lib/auth";
-import { AxiosError } from "axios";
 import AuthInput from "@/components/layout/AuthInput";
 import AuthButton from "@/components/layout/AuthButton";
 import WomenSit from "@/components/logo/WomenSit";
+import { useAuth } from "../contextapi/AuthContext";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   // ---------------- VALIDATION ----------------
   const validate = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!form.email.trim() || !form.email.includes("@"))
+    if (!form.email.trim() || !form.email.includes("@")) {
       newErrors.email = "Please enter a valid email address.";
-
-    if (!form.password.trim())
+    }
+    if (!form.password.trim()) {
       newErrors.password = "Please enter your password.";
-
+    }
     return newErrors;
   };
 
@@ -33,35 +33,29 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      return; // ❌ Do NOT call API
+      return;
     }
 
     setLoading(true);
-
     try {
-      const formData = new FormData();
-      formData.append("email", form.email);
-      formData.append("password", form.password);
-
-      const res = await api.post("/api/auth/login/", formData);
-      saveTokens(res.data.access, res.data.refresh);
-
-      const profileRes = await api.get("/api/users/me/");
-      localStorage.setItem("user", JSON.stringify(profileRes.data));
-
-      router.push("/dashboard");
-    } catch (err) {
-      let message = "Invalid email or password";
-
-      if (err instanceof AxiosError) {
-        message = err.response?.data?.message || message;
-      }
-
-      setErrors({ password: message }); // show error under password field
+      // Use AuthContext login function
+      await login(form.email, form.password);
+      toast.success("Logged in successfully!");
+      router.push("/dashboard"); // or /todos if you want
+    } catch (err: any) {
+      console.log("LOGIN ERROR:", err);
+      setErrors({
+        password:
+          err.response?.data?.message ||
+          err.message ||
+          "Invalid email or password.",
+      });
+      toast.error(
+        err.response?.data?.message || err.message || "Login failed."
+      );
     } finally {
       setLoading(false);
     }
@@ -69,16 +63,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-
-      {/* LEFT — Optional Illustration */}
+      {/* LEFT — Illustration */}
       <div className="flex-1 bg-indigo-50 flex items-center justify-center p-12">
-        <WomenSit/>
+        <WomenSit />
       </div>
 
       {/* RIGHT FORM */}
       <div className="flex-1 flex items-center justify-center p-12">
         <div className="w-full max-w-md">
-          <h1 className="text-[30px] font-bold mb-2 text-center">Log in to your account</h1>
+          <h1 className="text-[30px] font-bold mb-2 text-center">
+            Log in to your account
+          </h1>
           <h4 className="font-normal mb-9 text-center text-[#4B5563]">
             Start managing your tasks efficiently
           </h4>
@@ -87,7 +82,7 @@ export default function LoginPage() {
             <AuthInput
               label="Email"
               type="email"
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
               labelClass="text-sm font-medium text-[#000000]"
               value={form.email}
               onChange={(v) => {
@@ -101,7 +96,7 @@ export default function LoginPage() {
               label="Password"
               type="password"
               value={form.password}
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
               labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, password: v });

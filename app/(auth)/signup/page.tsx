@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import Illustration from "./poster-woman-holding-up-blue-box-that-says-log-cabin-it.svg";
-import AuthIllustration from "@/components/layout/AuthIllustration";
+import PosterWomen from "@/components/logo/PosterWomen";
 import AuthInput from "@/components/layout/AuthInput";
 import AuthButton from "@/components/layout/AuthButton";
 import Link from "next/link";
-import PosterWomen from "@/components/logo/PosterWomen";
+import { useAuth } from "../contextapi/AuthContext";
+
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signup } = useAuth();
 
   const [form, setForm] = useState({
     first_name: "",
@@ -30,14 +30,16 @@ export default function SignupPage() {
     const newErrors: Record<string, string> = {};
 
     if (!form.first_name.trim())
-      newErrors.first_name = "Please enter a valid name format.";
+      newErrors.first_name = "First name is required.";
 
     if (!form.last_name.trim())
-      newErrors.last_name = "Please enter a valid name format.";
+      newErrors.last_name = "Last name is required.";
 
-    if (!form.email.includes("@") || !form.email.includes(".")) newErrors.email = "Please enter a valid email address.";
+    if (!form.email.includes("@") || !form.email.includes("."))
+      newErrors.email = "Please enter a valid email address.";
 
-    if (form.password.length < 6) newErrors.password = "4 characters minimum.";
+    if (form.password.length < 6)
+      newErrors.password = "Password must be at least 6 characters.";
 
     if (form.password !== form.confirm_password)
       newErrors.confirm_password = "Passwords do not match.";
@@ -48,61 +50,71 @@ export default function SignupPage() {
   // ---------------- SUBMIT ----------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setErrors({});
-    const validationErrors = validate();
 
-    // ❌ If validation fails → show errors, do NOT load
+    const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
     setLoading(true);
-
     try {
-      const res = await api.post("/signup/", form);
+      // Use your AuthContext signup function
+      await signup(
+        form.email,
+        form.password,
+        form.first_name,
+        form.last_name
+      );
 
       toast.success("Account created successfully!");
       router.push("/login");
-    } catch (error: any) {
-      // Backend returns field-specific errors
-      if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
-      }
+    } catch (err: any) {
+      console.log("SIGNUP ERROR:", err);
 
-      toast.error("Signup failed.");
+      setErrors(
+        err.response?.data?.errors || {}
+      );
+
+      toast.error(
+        err.response?.data?.message || err.message || "Signup failed."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-
-
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-
       {/* LEFT ILLUSTRATION */}
       <div className="flex-1 bg-indigo-50 flex items-center justify-center p-12">
-        <PosterWomen/>
+        <PosterWomen />
       </div>
 
       {/* RIGHT FORM */}
       <div className="flex-1 flex items-center justify-center p-12">
         <div className="w-full max-w-md">
 
-          <h1 className="text-[30px] font-bold mb-2 text-center ">Create your account</h1>
-          <h4 className="font-normal mb-9 text-center text-[#4B5563]">Start managing your tasks efficiently</h4>
+          <h1 className="text-[30px] font-bold mb-2 text-center">
+            Create your account
+          </h1>
+
+          <h4 className="text-[#4B5563] mb-9 text-center">
+            Start managing your tasks efficiently
+          </h4>
+
           <form className="space-y-4 relative" onSubmit={handleSubmit}>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <AuthInput
                 label="First Name"
                 value={form.first_name}
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
-              labelClass="text-sm font-medium text-[#000000]"
+                inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
+                labelClass="text-sm font-medium text-[#000000]"
                 onChange={(v) => {
                   setForm({ ...form, first_name: v });
-                  if (v.trim() !== "") setErrors((prev) => ({ ...prev, first_name: "" }));
+                  setErrors((prev) => ({ ...prev, first_name: "" }));
                 }}
                 error={errors.first_name}
               />
@@ -110,11 +122,11 @@ export default function SignupPage() {
               <AuthInput
                 label="Last Name"
                 value={form.last_name}
-                inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+                inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
                 labelClass="text-sm font-medium text-[#000000]"
                 onChange={(v) => {
                   setForm({ ...form, last_name: v });
-                  if (v.trim() !== "") setErrors((prev) => ({ ...prev, last_name: "" }));
+                  setErrors((prev) => ({ ...prev, last_name: "" }));
                 }}
                 error={errors.last_name}
               />
@@ -124,11 +136,11 @@ export default function SignupPage() {
               label="Email"
               type="email"
               value={form.email}
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
               labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, email: v });
-                if (errors.email) setErrors({ ...errors, email: "" });
+                setErrors((prev) => ({ ...prev, email: "" }));
               }}
               error={errors.email}
             />
@@ -136,42 +148,36 @@ export default function SignupPage() {
             <AuthInput
               label="Password"
               type="password"
+              showToggle
               value={form.password}
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
               labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, password: v });
-
-                // Clear the error when user starts typing
-                if (v.length >= 6) {
-                  setErrors((prev) => ({ ...prev, password: "" }));
-                }
+                setErrors((prev) => ({ ...prev, password: "" }));
               }}
               error={errors.password}
-              showToggle={true}
             />
 
             <AuthInput
               label="Confirm Password"
               type="password"
               value={form.confirm_password}
-              inputClass= "border border-[#D1D5DB] rounded-lg h-[42px]"
+              inputClass="border border-[#D1D5DB] rounded-lg h-[42px]"
               labelClass="text-sm font-medium text-[#000000]"
               onChange={(v) => {
                 setForm({ ...form, confirm_password: v });
-                if (errors.confirm_password)
-                  setErrors({ ...errors, confirm_password: "" });
+                setErrors((prev) => ({ ...prev, confirm_password: "" }));
               }}
               error={errors.confirm_password}
             />
 
             <AuthButton text="Sign Up" loading={loading} />
-
           </form>
 
-          <p className="text-center mt-4 text-[#4B5563] font-regular leading-4">
-            Already have an account?{' '}
-            <Link href="/login" className="text-[#5272FF] font-medium ">
+          <p className="text-center mt-4 text-[#4B5563]">
+            Already have an account?{" "}
+            <Link href="/login" className="text-[#5272FF] font-medium">
               Log in
             </Link>
           </p>
