@@ -9,6 +9,20 @@ import AuthButton from "@/components/layout/AuthButton";
 import Link from "next/link";
 import { useAuth } from "../contextapi/AuthContext";
 
+interface ErrorResponse {
+  response?: {
+    data?: {
+      errors?: Record<string, string | string[]>;
+      message?: string;
+      detail?: string;
+      email?: string | string[];
+      password?: string | string[];
+      first_name?: string | string[];
+      last_name?: string | string[];
+    };
+  };
+  message?: string;
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -69,17 +83,50 @@ export default function SignupPage() {
       );
 
       toast.success("Account created successfully!");
-      router.push("/login");
-    } catch (err: any) {
+      router.push("/dashboard");
+    } catch (err: unknown) {
       console.log("SIGNUP ERROR:", err);
+      
+      // Handle different error response formats
+      const error = err as ErrorResponse;
+      const errorData = error.response?.data;
+      
+      let errorMessage = "Signup failed.";
+      if (errorData?.message) {
+        errorMessage = errorData.message;
+      } else if (errorData?.detail) {
+        errorMessage = errorData.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Handle field-specific errors
+      const fieldErrors: Record<string, string> = {};
+      
+      if (errorData?.errors) {
+        Object.keys(errorData.errors).forEach((key) => {
+          const errorValue = errorData.errors![key];
+          if (Array.isArray(errorValue)) {
+            fieldErrors[key] = errorValue[0];
+          } else if (typeof errorValue === 'string') {
+            fieldErrors[key] = errorValue;
+          }
+        });
+      } else if (errorData?.email) {
+        fieldErrors.email = Array.isArray(errorData.email) ? errorData.email[0] : errorData.email;
+      } else if (errorData?.password) {
+        fieldErrors.password = Array.isArray(errorData.password) ? errorData.password[0] : errorData.password;
+      } else if (errorData?.first_name) {
+        fieldErrors.first_name = Array.isArray(errorData.first_name) ? errorData.first_name[0] : errorData.first_name;
+      } else if (errorData?.last_name) {
+        fieldErrors.last_name = Array.isArray(errorData.last_name) ? errorData.last_name[0] : errorData.last_name;
+      }
+      
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+      }
 
-      setErrors(
-        err.response?.data?.errors || {}
-      );
-
-      toast.error(
-        err.response?.data?.message || err.message || "Signup failed."
-      );
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

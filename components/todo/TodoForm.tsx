@@ -10,7 +10,7 @@ export default function TodoForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (title.trim()) {
-      createTodo(title.trim());
+      createTodo({ title: title.trim() });
       setTitle('');
     }
   };

@@ -8,6 +8,7 @@ interface AuthInputProps {
   onChange: (v: string) => void;
   error?: string;
   showToggle?: boolean;
+  readOnly?: boolean;
 
   // 🔹 NEW optional style overrides
   wrapperClass?: string;
@@ -23,6 +24,7 @@ export default function AuthInput({
   onChange,
   error,
   showToggle = false,
+  readOnly = false,
 
   // 🔹 Default to empty so original styling stays untouched
   wrapperClass = "",
@@ -52,6 +54,7 @@ export default function AuthInput({
           type={inputType}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          readOnly={readOnly}
           className={`w-full px-3 py-3 focus:outline-none focus:ring-0 font-normal text-[#000000] text-sm 
             transition-colors ${
               error

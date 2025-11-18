@@ -1,29 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Task from '../logo/Task';
 import Profile from '../logo/Profile';
 import Logout from '../logo/Logout';
+import ProfilePic from '../logo/ProfilePic';
 import { useAuth } from '@/app/(auth)/contextapi/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth(); // read from AuthContext
+
+  const handleLogout = () => {
+    logout();       // clear user & token
+    router.push('/'); // redirect to homepage
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-[#0D224A] text-white flex flex-col justify-between py-8">
       
       {/* Top User Section */}
       <div className="flex flex-col items-center mt-8">
-        <Image
-          src={user?.photo || '/avatar.png'} // dynamic from context
-          alt="User Photo"
-          width={86}
-          height={86}
-          className="rounded-full border-2 border-white"
-        />
+        <ProfilePic className="rounded-full border-2 border-white" />
         <h3 className="mt-3 font-semibold">
           {user?.name || `${user?.first_name || ''} ${user?.last_name || ''}`}
         </h3>
@@ -54,10 +54,10 @@ export default function Sidebar() {
       </div>
 
       {/* Logout */}
-      <div className="px-6">
+      <div className='w-full'>
         <button
-          onClick={logout} // use logout from context
-          className="flex items-center text-[#8CA3CD] gap-3 px-6 py-3 hover:bg-linear-65 from-[#5272ff54] to-[#0D224A] transition"
+          onClick={handleLogout} // updated to redirect after logout
+          className="flex w-full items-center text-[#8CA3CD] gap-3 px-6 py-3 hover:bg-linear-65 from-[#5272ff54] to-[#0D224A] transition"
         >
           <Logout />
           Logout

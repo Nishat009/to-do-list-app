@@ -9,6 +9,11 @@ interface User {
   first_name?: string;
   last_name?: string;
   name?: string; // Keep for backward compatibility if API returns it
+  photo?: string;
+  profile_image?: string;
+  address?: string;
+  contact_number?: string;
+  birthday?: string;
 }
 
 interface AuthContextType {
@@ -17,7 +22,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, first_name: string, last_name: string) => Promise<void>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => Promise<void>;
+  updateUser: (formData: FormData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +37,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) {
         try {
           const userData = await apiService.getUserDetails();
-          setUser(userData);
+          // Ensure photo field is set from profile_image if API returns it
+          const userWithPhoto = {
+            ...userData,
+            photo: userData.photo || userData.profile_image,
+          };
+          setUser(userWithPhoto);
         } catch (error) {
           localStorage.removeItem('token');
         }
@@ -48,7 +58,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const token = response.token || response.access_token || response.access;
       localStorage.setItem('token', token);
       const userData = await apiService.getUserDetails();
-      setUser(userData);
+      // Ensure photo field is set from profile_image if API returns it
+      const userWithPhoto = {
+        ...userData,
+        photo: userData.photo || userData.profile_image,
+      };
+      setUser(userWithPhoto);
     } else {
       throw new Error('No token received from server');
     }
@@ -68,10 +83,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
-  const updateUser = async (data: Partial<User>) => {
-    const updatedUser = await apiService.updateUser(data);
-    setUser(updatedUser);
+ const updateUser = async (formData: FormData) => {
+  const updatedUser = await apiService.updateUser(formData);
+  // Ensure photo field is set from profile_image if API returns it
+  const userWithPhoto = {
+    ...updatedUser,
+    photo: updatedUser.photo || updatedUser.profile_image,
   };
+  setUser(userWithPhoto);
+};
+
+
+
 
   return (
     <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>

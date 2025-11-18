@@ -1,38 +1,72 @@
 import axios, { AxiosInstance } from "axios";
 
-const API_BASE_URL = "https://todo-app.pioneeralpha.com";
+const DEFAULT_API_BASE_URL = "https://todo-app.pioneeralpha.com";
+
+const getApiBaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+  return DEFAULT_API_BASE_URL;
+};
+
+const createApiClient = (): AxiosInstance => {
+  const client = axios.create({
+    baseURL: getApiBaseUrl(),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  client.interceptors.request.use((config) => {
+    if (typeof window !== "undefined") {
+      const token = window.localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    
+    // If FormData is being sent, remove Content-Type header so axios can set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
+    
+    return config;
+  });
+
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (typeof window !== "undefined") {
+        if (error.response?.status === 401) {
+          window.localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+        
+        // Log 400 errors with details for debugging
+        if (error.response?.status === 400) {
+          console.error("400 Bad Request Error:", {
+            url: error.config?.url,
+            method: error.config?.method,
+            data: error.config?.data,
+            response: error.response?.data,
+          });
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return client;
+};
+
+export const apiClient = createApiClient();
 
 class ApiService {
   private api: AxiosInstance;
 
-  constructor() {
-    this.api = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    // Add request interceptor to include auth token
-    this.api.interceptors.request.use((config) => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
-
-    // Add response interceptor to handle errors
-    this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-        }
-        return Promise.reject(error);
-      }
-    );
+  constructor(apiInstance: AxiosInstance = apiClient) {
+    this.api = apiInstance;
   }
 
   // Auth endpoints
@@ -68,10 +102,9 @@ class ApiService {
     return response.data;
   }
 
-  async updateUser(
-    data: Partial<{ first_name: string; last_name: string; email: string }>
-  ) {
-    const response = await this.api.patch("/api/users/me/", data);
+  async updateUser(formData: FormData) {
+    // Don't set Content-Type header - axios will set it automatically with boundary for FormData
+    const response = await this.api.patch("/api/users/me/", formData);
     return response.data;
   }
 
@@ -111,3 +144,4 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+export default apiClient;

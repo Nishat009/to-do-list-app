@@ -14,7 +14,7 @@ export default function Navbar() {
   });
 
   return (
-    <header className="sticky top-0 bg-white border-b shadow-sm h-20 flex items-center justify-between px-10">
+    <header className="sticky z-[99999] top-0 bg-white border-b shadow-sm h-20 flex items-center justify-between px-10">
       
       {/* Logo */}
       <div>

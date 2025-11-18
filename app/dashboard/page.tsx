@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 import Sidebar from "@/components/layout/Sidebar";
 import Navbar from "@/components/layout/Navbar";
@@ -10,47 +11,72 @@ import Filter from "@/components/logo/Filter";
 import Plus from "@/components/logo/Plus";
 import AuthInput from "@/components/layout/AuthInput";
 import Delete from "@/components/logo/Delete";
+import Edit from "@/components/logo/Edit";
+import { ProtectedRoute } from "@/components/protectedRoutes";
+import { useTodos } from "@/hooks/useTodos";
+import { Todo } from "@/types";
 
 export default function DashboardPage() {
   const [showFilter, setShowFilter] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("");
+  const [priority, setPriority] = useState<"extreme" | "moderate" | "low">("moderate");
 
-  const [tasks, setTasks] = useState([]);
+  const { todos, loading, createTodo, updateTodo, deleteTodo } = useTodos();
 
   // ------------------------
   // ADD TASK FUNCTION
   // ------------------------
-  const addTask = () => {
-    if (!title.trim()) return;
+  const addTask = async () => {
+    if (!title.trim()) {
+      toast.error("Please enter a task title");
+      return;
+    }
 
-    const newTask = {
-      id: Date.now(),
-      title,
-      date,
-      description,
-      priority,
-    };
+    try {
+      await createTodo({
+        title,
+        description,
+        priority,
+        todo_date: date || new Date().toISOString().split('T')[0],
+      });
+      
+      // Reset
+      setTitle("");
+      setDate("");
+      setDescription("");
+      setPriority("moderate");
+      setShowModal(false);
+      toast.success("Task created successfully!");
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      toast.error("Failed to create task. Please try again.");
+    }
+  };
 
-    setTasks((prev) => [...prev, newTask]);
+  // Filter todos based on search
+  const filteredTodos = todos.filter((todo) =>
+    todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    todo.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-    // Reset
-    setTitle("");
-    setDate("");
-    setDescription("");
-    setPriority("");
-
-    setShowModal(false);
+  // Format priority for display
+  const formatPriority = (priority: string) => {
+    if (priority === 'extreme') return 'Extreme';
+    if (priority === 'moderate') return 'Moderate';
+    if (priority === 'low') return 'Low';
+    return priority;
   };
 
   // ------------------------
   return (
-    <div className="min-h-screen bg-[#EEF7FF] flex">
-      <Sidebar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-[#EEF7FF] flex">
+        <Sidebar />
 
       <div className="flex-1 ml-64 flex flex-col">
         <Navbar />
@@ -81,6 +107,8 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   placeholder="Search your task here..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-4 h-10 pr-16 bg-white border text-[#4B5563] font-semibold text-xs border-[#D1D5DB] rounded-lg"
                 />
                 <Search className="absolute right-0 top-0 h-10 w-10 rounded-lg p-3 text-white bg-[#5272FF]" />
@@ -119,57 +147,110 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* If NO TASKS */}
-            {tasks.length === 0 && (
+            {/* If LOADING */}
+            {loading && (
               <div className="bg-white rounded-2xl border border-[#D1D5DB] p-16 text-center">
-                <button className="flex w-full items-center justify-center transition">
+                <p className="text-2xl font-regular text-[#201F1E]">Loading todos...</p>
+              </div>
+            )}
+
+            {/* If NO TASKS */}
+            {!loading && filteredTodos.length === 0 && (
+              <div className="bg-white rounded-2xl border border-[#D1D5DB] p-16 text-center">
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="flex w-full items-center justify-center transition"
+                >
                   <AddTaskLogo />
                 </button>
                 <p className="mt-2 text-2xl font-regular text-[#201F1E]">
-                  No todos yet
+                  {searchQuery ? "No todos found" : "No todos yet"}
                 </p>
               </div>
             )}
 
-            {/* If TASKS EXIST */}
-            {tasks.length > 0 && (
-              <div className="space-y-4">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="bg-white p-5 rounded-xl shadow border border-[#D1D5DB]"
-                  >
-                    <div className="flex justify-between">
-                      <h3 className="text-lg font-bold text-[#0D224A]">
-                        {task.title}
+            {/* Your Tasks Section */}
+            {!loading && filteredTodos.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-2xl font-bold text-[#0D224A] mb-6">Your Tasks</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTodos.map((todo) => (
+                    <div
+                      key={todo.id}
+                      className="bg-white rounded-xl shadow-sm border border-[#D1D5DB] p-5 hover:shadow-md transition-shadow"
+                    >
+                      {/* Title */}
+                      <h3 className={`text-lg font-bold text-[#0D224A] mb-2 ${todo.is_completed ? 'line-through text-gray-400' : ''}`}>
+                        {todo.title}
                       </h3>
 
-                      <span
-                        className={`text-sm px-3 py-1 rounded-lg ${
-                          task.priority === "Extreme"
-                            ? "bg-[#EE0039]/20 text-[#EE0039]"
-                            : task.priority === "Moderate"
-                            ? "bg-[#11C25D]/20 text-[#11C25D]"
-                            : task.priority === "Low"
-                            ? "bg-[#EAB308]/20 text-[#EAB308]"
-                            : ""
-                        }`}
-                      >
-                        {task.priority}
-                      </span>
+                      {/* Description */}
+                      {todo.description && (
+                        <p className="text-sm text-[#4B5563] mb-4 line-clamp-2">
+                          {todo.description}
+                        </p>
+                      )}
+
+                      {/* Priority Badge */}
+                      <div className="mb-4">
+                        <span
+                          className={`text-xs px-3 py-1 rounded-full font-medium ${
+                            todo.priority === "extreme"
+                              ? "bg-[#EE0039]/20 text-[#EE0039]"
+                              : todo.priority === "moderate"
+                              ? "bg-[#11C25D]/20 text-[#11C25D]"
+                              : todo.priority === "low"
+                              ? "bg-[#EAB308]/20 text-[#EAB308]"
+                              : ""
+                          }`}
+                        >
+                          {formatPriority(todo.priority)}
+                        </span>
+                      </div>
+
+                      {/* Due Date */}
+                      {todo.todo_date && (
+                        <p className="text-xs text-[#4B5563] mb-4">
+                          Due {new Date(todo.todo_date).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-[#D1D5DB]">
+                        <button
+                          onClick={() => {
+                            // TODO: Implement edit functionality
+                            toast.info("Edit functionality coming soon");
+                          }}
+                          className="text-[#5272FF] hover:text-[#3B5FE8] p-1"
+                          title="Edit"
+                        >
+                          <Edit />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm("Are you sure you want to delete this task?")) {
+                              try {
+                                await deleteTodo(todo.id);
+                                toast.success("Task deleted successfully!");
+                              } catch (error) {
+                                toast.error("Failed to delete task");
+                              }
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete"
+                        >
+                          <Delete />
+                        </button>
+                      </div>
                     </div>
-
-                    {task.date && (
-                      <p className="text-xs text-[#4B5563] mt-1">
-                        Deadline: {task.date}
-                      </p>
-                    )}
-
-                    <p className="mt-3 text-sm text-[#4B5563]">
-                      {task.description}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -235,8 +316,8 @@ export default function DashboardPage() {
                   <input
                     type="radio"
                     name="priority"
-                    checked={priority === "Extreme"}
-                    onChange={() => setPriority("Extreme")}
+                    checked={priority === "extreme"}
+                    onChange={() => setPriority("extreme")}
                   />
                 </label>
 
@@ -246,8 +327,8 @@ export default function DashboardPage() {
                   <input
                     type="radio"
                     name="priority"
-                    checked={priority === "Moderate"}
-                    onChange={() => setPriority("Moderate")}
+                    checked={priority === "moderate"}
+                    onChange={() => setPriority("moderate")}
                   />
                 </label>
 
@@ -257,8 +338,8 @@ export default function DashboardPage() {
                   <input
                     type="radio"
                     name="priority"
-                    checked={priority === "Low"}
-                    onChange={() => setPriority("Low")}
+                    checked={priority === "low"}
+                    onChange={() => setPriority("low")}
                   />
                 </label>
               </div>
@@ -297,6 +378,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

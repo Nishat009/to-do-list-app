@@ -17,45 +17,57 @@ const ItemType = 'TODO';
 
 interface DragItem {
   index: number;
-  id: string;
+  id: number;
   type: string;
 }
 
-interface TodoDragProps {
+interface DraggableTodoProps {
   todo: Todo;
   index: number;
 }
 
-const [{ isDragging }, drag] = useDrag<DragItem, void, { isDragging: boolean }>({
-  type: ItemType,
-  item: { id: todo.id, index, type: ItemType },
-  collect: (monitor: DragSourceMonitor) => ({
-    isDragging: monitor.isDragging(),
-  }),
-});
+function DraggableTodo({ todo, index }: DraggableTodoProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { reorderTodos, todos } = useTodos();
 
-const [, drop] = useDrop<DragItem>({
-  accept: ItemType,
-  hover(item: DragItem, monitor: DropTargetMonitor) {
-    if (!ref.current) return;
-    const dragIndex = item.index;
-    const hoverIndex = index;
-    if (dragIndex === hoverIndex) return;
+  const [{ isDragging }, drag] = useDrag<DragItem, void, { isDragging: boolean }>({
+    type: ItemType,
+    item: { id: todo.id, index, type: ItemType },
+    collect: (monitor: DragSourceMonitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
 
-    reorderTodos((prev) => {
-      const newTodos = [...prev];
+  const [, drop] = useDrop<DragItem>({
+    accept: ItemType,
+    hover(item: DragItem, monitor: DropTargetMonitor) {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+
+      const newTodos = [...todos];
       const [moved] = newTodos.splice(dragIndex, 1);
       newTodos.splice(hoverIndex, 0, moved);
-      return newTodos.map((t, i) => ({ ...t, order: i }));
-    });
+      const reordered = newTodos.map((t, i) => ({ ...t, position: i + 1 }));
+      reorderTodos(reordered);
 
-    item.index = hoverIndex;
-  },
-});
+      item.index = hoverIndex;
+    },
+  });
 
-drag(drop(ref));
+  drag(drop(ref));
 
-
+  return (
+    <div
+      ref={ref}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className="cursor-move"
+    >
+      <TodoItem todo={todo} />
+    </div>
+  );
+}
 
 export default function TodoList() {
   const { todos, loading } = useTodos();

@@ -10,20 +10,30 @@ export const useTodos = () => {
   const fetchTodos = async () => {
     try {
       const res = await api.get('/api/todos/');
-      setTodos(res.data.results.sort((a: Todo, b: Todo) => a.position - b.position));
+      // Handle both paginated (results) and direct array responses
+      const todosArray = Array.isArray(res.data) 
+        ? res.data 
+        : (res.data.results || res.data.items || []);
+      setTodos(todosArray.sort((a: Todo, b: Todo) => (a.position || 0) - (b.position || 0)));
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch todos:', err);
+      setTodos([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const createTodo = async (title: string) => {
+  const createTodo = async (data: {
+    title: string;
+    description?: string;
+    priority?: 'extreme' | 'moderate' | 'low';
+    todo_date?: string;
+  }) => {
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', '');
-    formData.append('priority', 'moderate');
-    formData.append('todo_date', new Date().toISOString().split('T')[0]);
+    formData.append('title', data.title);
+    formData.append('description', data.description || '');
+    formData.append('priority', data.priority || 'moderate');
+    formData.append('todo_date', data.todo_date || new Date().toISOString().split('T')[0]);
 
     const res = await api.post('/api/todos/', formData);
     setTodos((prev) => [...prev, res.data]);
@@ -46,11 +56,14 @@ export const useTodos = () => {
 
   const reorderTodos = async (newOrder: Todo[]) => {
     setTodos(newOrder);
-    newOrder.forEach(async (todo, index) => {
-      if (todo.position !== index + 1) {
-        await updateTodo(todo.id, { position: index + 1 });
-      }
-    });
+    // Update positions in parallel
+    await Promise.all(
+      newOrder.map(async (todo, index) => {
+        if (todo.position !== index + 1) {
+          await updateTodo(todo.id, { position: index + 1 });
+        }
+      })
+    );
   };
 
   useEffect(() => {

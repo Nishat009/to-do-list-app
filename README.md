@@ -29,6 +29,16 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## API Configuration
+
+This project talks to the backend through an Axios client that reads the base URL from an environment variable. Create a `.env.local` file in the project root (ignored by git) and set:
+
+```
+NEXT_PUBLIC_API_BASE_URL=https://todo-app.pioneeralpha.com
+```
+
+When you need to point the UI to a different API domain, simply change the value and restart the dev server. If the variable is not provided, the app will fall back to the Pioneer Alpha demo API.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
