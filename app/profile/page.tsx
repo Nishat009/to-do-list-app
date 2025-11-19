@@ -147,7 +147,11 @@ export default function ProfilePage() {
 
   return (
     <ProtectedRoute>
-       <div className="px-[77px] py-9">
+      <div className="min-h-screen bg-[#EEF7FF] flex">
+        <Sidebar />
+        <div className="flex-1 ml-64">
+          <Navbar />
+          <div className="px-10 py-10">
           <div className="bg-white mt-6 p-8 shadow rounded-2xl">
             <h2 className="text-2xl font-semibold text-[#0D224A] pb-0 mb-6 relative w-max">
               Account Information
@@ -314,6 +318,8 @@ export default function ProfilePage() {
             </form>
           </div>
         </div>
+      </div>
+      </div>
     </ProtectedRoute>
   );
 }

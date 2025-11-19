@@ -44,7 +44,7 @@ export default function SignupPage() {
     const newErrors: Record<string, string> = {};
 
     if (!form.first_name.trim())
-      newErrors.first_name = "Please enter a valid name format.d.";
+      newErrors.first_name = "Please enter a valid name format.";
 
     if (!form.last_name.trim())
       newErrors.last_name = "Please enter a valid name format.";
